@@ -42,8 +42,17 @@
         <div id="loader" class="hidden">
             <div class="spinner"></div>
             <p id="loader-message">Loading FFmpeg...</p>
-            <div id="progress-container" style="display: none;">
-                <div id="progress-bar"></div>
+            <div id="progress-container" class="hidden">
+                <div class="progress-label">Downloading FFmpeg:</div>
+                <div class="progress-bar-wrapper">
+                    <div id="load-progress-bar"></div>
+                </div>
+            </div>
+            <div id="crop-progress-container" class="hidden">
+                <div class="progress-label">Processing:</div>
+                <div class="progress-bar-wrapper">
+                    <div id="crop-progress-bar"></div>
+                </div>
             </div>
         </div>
     </main>

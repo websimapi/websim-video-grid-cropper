@@ -140,18 +140,28 @@ video {
     color: white;
 }
 
-#progress-container {
+#progress-container, #crop-progress-container {
     width: 80%;
     max-width: 300px;
+    margin-top: 1rem;
+}
+
+.progress-label {
+    text-align: left;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
     height: 20px;
     background-color: #555;
     border-radius: 10px;
     overflow: hidden;
-    margin-top: 1rem;
     border: 1px solid #777;
 }
 
-#progress-bar {
+#load-progress-bar, #crop-progress-bar {
     width: 0%;
     height: 100%;
     background-color: var(--primary-color);

@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 
 const videoUpload = document.getElementById('video-upload');
 const rowsInput = document.getElementById('rows');
@@ -12,7 +12,9 @@ const resultsSection = document.getElementById('results-section');
 const loader = document.getElementById('loader');
 const loaderMessage = document.getElementById('loader-message');
 const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
+const loadProgressBar = document.getElementById('load-progress-bar');
+const cropProgressContainer = document.getElementById('crop-progress-container');
+const cropProgressBar = document.getElementById('crop-progress-bar');
 
 let videoFile = null;
 let ffmpegInstance = null;
@@ -24,35 +26,47 @@ async function loadFFmpeg() {
     
     loader.classList.remove('hidden');
     loaderMessage.textContent = 'Loading FFmpeg...';
-    progressContainer.style.display = 'block';
-    progressBar.style.width = '0%';
+    progressContainer.classList.remove('hidden');
+    cropProgressContainer.classList.add('hidden');
+    loadProgressBar.style.width = '0%';
 
     const ffmpeg = new FFmpeg();
     ffmpeg.on('log', ({ message }) => {
         console.log(message);
     });
-    
-    const coreURL = await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'application/javascript');
-    
-    await ffmpeg.load({
-        coreURL,
-        wasmURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm'),
-        workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.worker.js', 'application/javascript'),
+
+    ffmpeg.on('progress', ({ progress }) => {
+        if (progress >= 0 && progress <= 1) {
+            loadProgressBar.style.width = `${progress * 100}%`;
+        }
     });
     
+    const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm';
+
+    try {
+        await ffmpeg.load({
+            coreURL: `${baseURL}/ffmpeg-core.js`,
+            wasmURL: `${baseURL}/ffmpeg-core.wasm`,
+            workerURL: `${baseURL}/ffmpeg-core.worker.js`,
+        });
+    } catch (e) {
+        console.error('FFmpeg load failed', e);
+        loaderMessage.textContent = 'Failed to load FFmpeg. Please try again.';
+        progressContainer.classList.add('hidden');
+        throw e; // re-throw to be caught by the promise
+    }
+    
     ffmpegInstance = ffmpeg;
-    progressContainer.style.display = 'none';
+    progressContainer.classList.add('hidden');
     loader.classList.add('hidden');
     return ffmpegInstance;
 }
 
 // Pre-load FFmpeg on page load
-ffmpegLoadPromise = loadFFmpeg();
-ffmpegLoadPromise.catch(err => {
+ffmpegLoadPromise = loadFFmpeg().catch(err => {
     console.error('Failed to load FFmpeg', err);
-    loaderMessage.textContent = 'Failed to load FFmpeg. Please refresh the page.';
-    progressContainer.style.display = 'none';
-    // Don't hide loader, show error message
+    // Error message is already set in loadFFmpeg
+    return null; // Ensure promise resolves to null on failure
 });
 
 videoUpload.addEventListener('change', (e) => {
@@ -82,6 +96,8 @@ cropButton.addEventListener('click', async () => {
 
     loader.classList.remove('hidden');
     loaderMessage.textContent = 'Waiting for FFmpeg to finish loading...';
+    progressContainer.classList.add('hidden');
+    cropProgressContainer.classList.add('hidden');
 
     const ffmpeg = await ffmpegLoadPromise;
     if (!ffmpeg) {
@@ -91,6 +107,8 @@ cropButton.addEventListener('click', async () => {
     
     resultsContainer.innerHTML = '';
     resultsSection.classList.add('hidden');
+    cropProgressContainer.classList.remove('hidden');
+    cropProgressBar.style.width = '0%';
 
     const rows = parseInt(rowsInput.value);
     const cols = parseInt(colsInput.value);
@@ -99,6 +117,7 @@ cropButton.addEventListener('click', async () => {
     const cellWidth = Math.floor(videoWidth / cols);
     const cellHeight = Math.floor(videoHeight / rows);
     
+    loaderMessage.textContent = 'Preparing video...';
     const inputFileName = 'input.mp4';
     await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile));
 
@@ -110,8 +129,9 @@ cropButton.addEventListener('click', async () => {
             const y = i * cellHeight;
             const outputFileName = `output_${i}_${j}.mp4`;
             
-            const progress = (i * cols + j + 1) / (rows * cols);
-            loaderMessage.textContent = `Processing clip ${i * cols + j + 1} of ${rows * cols}... (${Math.round(progress * 100)}%)`;
+            const totalClips = rows * cols;
+            const currentClip = i * cols + j + 1;
+            loaderMessage.textContent = `Processing clip ${currentClip} of ${totalClips}...`;
 
             await ffmpeg.exec([
                 '-i', inputFileName,
@@ -119,6 +139,9 @@ cropButton.addEventListener('click', async () => {
                 '-c:a', 'copy',
                 outputFileName
             ]);
+            
+            const progress = currentClip / totalClips;
+            cropProgressBar.style.width = `${progress * 100}%`;
 
             const data = await ffmpeg.readFile(outputFileName);
             const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
