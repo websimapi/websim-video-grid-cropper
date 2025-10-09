@@ -140,7 +140,7 @@ video {
     color: white;
 }
 
-#progress-container, #crop-progress-container {
+#progress-container {
     width: 80%;
     max-width: 300px;
     margin-top: 1rem;
@@ -161,7 +161,7 @@ video {
     border: 1px solid #777;
 }
 
-#load-progress-bar, #crop-progress-bar {
+#progress-bar {
     width: 0%;
     height: 100%;
     background-color: var(--primary-color);

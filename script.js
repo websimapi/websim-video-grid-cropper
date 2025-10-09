@@ -1,6 +1,3 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
-
 const videoUpload = document.getElementById('video-upload');
 const rowsInput = document.getElementById('rows');
 const colsInput = document.getElementById('cols');
@@ -12,62 +9,10 @@ const resultsSection = document.getElementById('results-section');
 const loader = document.getElementById('loader');
 const loaderMessage = document.getElementById('loader-message');
 const progressContainer = document.getElementById('progress-container');
-const loadProgressBar = document.getElementById('load-progress-bar');
-const cropProgressContainer = document.getElementById('crop-progress-container');
-const cropProgressBar = document.getElementById('crop-progress-bar');
+const progressBar = document.getElementById('progress-bar');
 
 let videoFile = null;
-let ffmpegInstance = null;
 let originalVideoElement = null;
-let ffmpegLoadPromise = null;
-
-async function loadFFmpeg() {
-    if (ffmpegInstance) return ffmpegInstance;
-    
-    loader.classList.remove('hidden');
-    loaderMessage.textContent = 'Loading FFmpeg...';
-    progressContainer.classList.remove('hidden');
-    cropProgressContainer.classList.add('hidden');
-    loadProgressBar.style.width = '0%';
-
-    const ffmpeg = new FFmpeg();
-    ffmpeg.on('log', ({ message }) => {
-        console.log(message);
-    });
-
-    ffmpeg.on('progress', ({ progress }) => {
-        if (progress >= 0 && progress <= 1) {
-            loadProgressBar.style.width = `${progress * 100}%`;
-        }
-    });
-    
-    const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm';
-
-    try {
-        await ffmpeg.load({
-            coreURL: `${baseURL}/ffmpeg-core.js`,
-            wasmURL: `${baseURL}/ffmpeg-core.wasm`,
-            workerURL: `${baseURL}/ffmpeg-core.worker.js`,
-        });
-    } catch (e) {
-        console.error('FFmpeg load failed', e);
-        loaderMessage.textContent = 'Failed to load FFmpeg. Please try again.';
-        progressContainer.classList.add('hidden');
-        throw e; // re-throw to be caught by the promise
-    }
-    
-    ffmpegInstance = ffmpeg;
-    progressContainer.classList.add('hidden');
-    loader.classList.add('hidden');
-    return ffmpegInstance;
-}
-
-// Pre-load FFmpeg on page load
-ffmpegLoadPromise = loadFFmpeg().catch(err => {
-    console.error('Failed to load FFmpeg', err);
-    // Error message is already set in loadFFmpeg
-    return null; // Ensure promise resolves to null on failure
-});
 
 videoUpload.addEventListener('change', (e) => {
     videoFile = e.target.files[0];
@@ -75,10 +20,15 @@ videoUpload.addEventListener('change', (e) => {
         const videoURL = URL.createObjectURL(videoFile);
         videoContainer.innerHTML = '';
         originalVideoElement = document.createElement('video');
-        originalVideoElement.controls = true;
         originalVideoElement.src = videoURL;
-        videoContainer.appendChild(originalVideoElement);
+        originalVideoElement.muted = true; // Mute preview to allow autoplay for processing
+        originalVideoElement.preload = 'auto';
         
+        const previewEl = document.createElement('video');
+        previewEl.controls = true;
+        previewEl.src = videoURL;
+        videoContainer.appendChild(previewEl);
+
         originalVideoElement.addEventListener('loadedmetadata', () => {
             cropButton.disabled = false;
             cropButton.textContent = 'Crop Video';
@@ -94,70 +44,117 @@ videoUpload.addEventListener('change', (e) => {
 cropButton.addEventListener('click', async () => {
     if (!videoFile || !originalVideoElement) return;
 
+    // --- Setup UI for processing ---
     loader.classList.remove('hidden');
-    loaderMessage.textContent = 'Waiting for FFmpeg to finish loading...';
-    progressContainer.classList.add('hidden');
-    cropProgressContainer.classList.add('hidden');
-
-    const ffmpeg = await ffmpegLoadPromise;
-    if (!ffmpeg) {
-         loaderMessage.textContent = 'FFmpeg failed to load. Cannot process video.';
-         return; // Exit if ffmpeg isn't available
-    }
-    
+    loaderMessage.textContent = 'Preparing to process video...';
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = '0%';
     resultsContainer.innerHTML = '';
     resultsSection.classList.add('hidden');
-    cropProgressContainer.classList.remove('hidden');
-    cropProgressBar.style.width = '0%';
+    cropButton.disabled = true;
 
     const rows = parseInt(rowsInput.value);
     const cols = parseInt(colsInput.value);
+
+    // Wait for video to be ready
+    if (originalVideoElement.readyState < 3) { // HAVE_FUTURE_DATA
+        await new Promise(resolve => {
+            originalVideoElement.oncanplaythrough = resolve;
+        });
+    }
     
     const { videoWidth, videoHeight } = originalVideoElement;
     const cellWidth = Math.floor(videoWidth / cols);
     const cellHeight = Math.floor(videoHeight / rows);
-    
-    loaderMessage.textContent = 'Preparing video...';
-    const inputFileName = 'input.mp4';
-    await ffmpeg.writeFile(inputFileName, await fetchFile(videoFile));
+    const totalClips = rows * cols;
 
+    loaderMessage.textContent = `Processing ${totalClips} clips...`;
     resultsContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
+    const cropJobs = [];
+
+    // --- Create a crop job for each grid cell ---
     for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-            const x = j * cellWidth;
-            const y = i * cellHeight;
-            const outputFileName = `output_${i}_${j}.mp4`;
+            const canvas = document.createElement('canvas');
+            canvas.width = cellWidth;
+            canvas.height = cellHeight;
+            const ctx = canvas.getContext('2d');
             
-            const totalClips = rows * cols;
-            const currentClip = i * cols + j + 1;
-            loaderMessage.textContent = `Processing clip ${currentClip} of ${totalClips}...`;
-
-            await ffmpeg.exec([
-                '-i', inputFileName,
-                '-vf', `crop=${cellWidth}:${cellHeight}:${x}:${y}`,
-                '-c:a', 'copy',
-                outputFileName
-            ]);
+            const stream = canvas.captureStream(30); // 30 FPS
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
             
-            const progress = currentClip / totalClips;
-            cropProgressBar.style.width = `${progress * 100}%`;
-
-            const data = await ffmpeg.readFile(outputFileName);
-            const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-            const videoURL = URL.createObjectURL(videoBlob);
-
-            const videoEl = document.createElement('video');
-            videoEl.src = videoURL;
-            videoEl.controls = true;
-            videoEl.muted = true;
-            resultsContainer.appendChild(videoEl);
+            const chunks = [];
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunks.push(e.data);
+                }
+            };
             
-            await ffmpeg.deleteFile(outputFileName);
+            const jobPromise = new Promise(resolve => {
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    resolve(blob);
+                };
+            });
+
+            cropJobs.push({
+                sx: j * cellWidth,
+                sy: i * cellHeight,
+                ctx,
+                recorder,
+                promise: jobPromise,
+            });
         }
     }
     
-    await ffmpeg.deleteFile(inputFileName);
+    originalVideoElement.currentTime = 0;
+    
+    // Start all recorders
+    cropJobs.forEach(job => job.recorder.start());
+
+    let animationFrameId;
+
+    const drawFrame = () => {
+        if (originalVideoElement.paused || originalVideoElement.ended) {
+            return;
+        }
+        
+        cropJobs.forEach(job => {
+            job.ctx.drawImage(
+                originalVideoElement,
+                job.sx, job.sy, cellWidth, cellHeight, // source rect
+                0, 0, cellWidth, cellHeight // destination rect
+            );
+        });
+        
+        const progress = originalVideoElement.currentTime / originalVideoElement.duration;
+        progressBar.style.width = `${progress * 100}%`;
+        
+        animationFrameId = requestAnimationFrame(drawFrame);
+    };
+
+    originalVideoElement.onended = () => {
+        cancelAnimationFrame(animationFrameId);
+        cropJobs.forEach(job => job.recorder.stop());
+    };
+    
+    await originalVideoElement.play();
+    animationFrameId = requestAnimationFrame(drawFrame);
+
+    // --- Wait for all recordings to finish and display results ---
+    const allBlobs = await Promise.all(cropJobs.map(job => job.promise));
+
+    allBlobs.forEach(blob => {
+        const videoURL = URL.createObjectURL(blob);
+        const videoEl = document.createElement('video');
+        videoEl.src = videoURL;
+        videoEl.controls = true;
+        videoEl.muted = true;
+        resultsContainer.appendChild(videoEl);
+    });
+
     loader.classList.add('hidden');
     resultsSection.classList.remove('hidden');
+    cropButton.disabled = false;
 });

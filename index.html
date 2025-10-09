@@ -41,17 +41,11 @@
 
         <div id="loader" class="hidden">
             <div class="spinner"></div>
-            <p id="loader-message">Loading FFmpeg...</p>
+            <p id="loader-message">Processing video...</p>
             <div id="progress-container" class="hidden">
-                <div class="progress-label">Downloading FFmpeg:</div>
+                <div class="progress-label">Progress:</div>
                 <div class="progress-bar-wrapper">
-                    <div id="load-progress-bar"></div>
-                </div>
-            </div>
-            <div id="crop-progress-container" class="hidden">
-                <div class="progress-label">Processing:</div>
-                <div class="progress-bar-wrapper">
-                    <div id="crop-progress-bar"></div>
+                    <div id="progress-bar"></div>
                 </div>
             </div>
         </div>
@@ -59,10 +53,7 @@
 
     <script type="importmap">
     {
-      "imports": {
-        "@ffmpeg/ffmpeg": "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/ffmpeg.js",
-        "@ffmpeg/util": "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js"
-      }
+      "imports": {}
     }
     </script>
     <script type="module" src="script.js"></script>
