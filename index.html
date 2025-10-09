@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Grid Cropper</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main>
+        <h1>Video Grid Cropper</h1>
+        <p>Upload a video, choose your grid size, and get cropped clips!</p>
+        
+        <section id="controls">
+            <input type="file" id="video-upload" accept="video/*">
+            <div class="grid-inputs">
+                <div>
+                    <label for="rows">Rows:</label>
+                    <input type="number" id="rows" value="2" min="1" max="10">
+                </div>
+                <div>
+                    <label for="cols">Columns:</label>
+                    <input type="number" id="cols" value="2" min="1" max="10">
+                </div>
+            </div>
+            <button id="crop-button" disabled>Select a video first</button>
+        </section>
+
+        <section id="preview-section" class="hidden">
+            <h2>Original Video</h2>
+            <div id="video-container"></div>
+        </section>
+
+        <section id="results-section" class="hidden">
+            <h2>Cropped Videos</h2>
+            <div id="results-container"></div>
+        </section>
+
+        <div id="loader" class="hidden">
+            <div class="spinner"></div>
+            <p id="loader-message">Loading FFmpeg...</p>
+        </div>
+    </main>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "@ffmpeg/ffmpeg": "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/ffmpeg.js",
+        "@ffmpeg/util": "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js"
+      }
+    }
+    </script>
+    <script type="module" src="script.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+

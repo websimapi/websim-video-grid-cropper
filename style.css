@@ -1,0 +1,165 @@
+:root {
+    --primary-color: #4a90e2;
+    --background-color: #f4f7f6;
+    --text-color: #333;
+    --card-background: #ffffff;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+main {
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+}
+
+h1 {
+    color: var(--primary-color);
+}
+
+p {
+    margin-bottom: 2rem;
+}
+
+section {
+    background-color: var(--card-background);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1.5rem;
+}
+
+#controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+input[type="file"] {
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+input[type="file"]:hover {
+    background-color: #e9f2fd;
+}
+
+.grid-inputs {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.grid-inputs div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+input[type="number"] {
+    width: 60px;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+button:hover:not(:disabled) {
+    background-color: #357abd;
+    transform: translateY(-2px);
+}
+
+button:disabled {
+    background-color: #a0a0a0;
+    cursor: not-allowed;
+}
+
+#video-container, #results-container {
+    margin-top: 1rem;
+}
+
+video {
+    max-width: 100%;
+    border-radius: var(--border-radius);
+    border: 1px solid #ddd;
+}
+
+#results-container {
+    display: grid;
+    gap: 1rem;
+}
+
+.hidden {
+    display: none;
+}
+
+#loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 1000;
+}
+
+.spinner {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid var(--primary-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 0.5rem;
+    }
+    section {
+        padding: 1rem;
+    }
+    h1 {
+        font-size: 1.5rem;
+    }
+}
+
