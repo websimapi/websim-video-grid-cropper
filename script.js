@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 const videoUpload = document.getElementById('video-upload');
 const rowsInput = document.getElementById('rows');
@@ -11,30 +11,49 @@ const previewSection = document.getElementById('preview-section');
 const resultsSection = document.getElementById('results-section');
 const loader = document.getElementById('loader');
 const loaderMessage = document.getElementById('loader-message');
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
 
 let videoFile = null;
 let ffmpegInstance = null;
 let originalVideoElement = null;
+let ffmpegLoadPromise = null;
 
 async function loadFFmpeg() {
     if (ffmpegInstance) return ffmpegInstance;
     
     loader.classList.remove('hidden');
-    loaderMessage.textContent = 'Loading FFmpeg... This may take a moment.';
+    loaderMessage.textContent = 'Loading FFmpeg...';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
 
     const ffmpeg = new FFmpeg();
     ffmpeg.on('log', ({ message }) => {
         console.log(message);
     });
     
+    const coreURL = await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'application/javascript');
+    
     await ffmpeg.load({
-        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+        coreURL,
+        wasmURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm'),
+        workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.worker.js', 'application/javascript'),
     });
     
     ffmpegInstance = ffmpeg;
+    progressContainer.style.display = 'none';
     loader.classList.add('hidden');
     return ffmpegInstance;
 }
+
+// Pre-load FFmpeg on page load
+ffmpegLoadPromise = loadFFmpeg();
+ffmpegLoadPromise.catch(err => {
+    console.error('Failed to load FFmpeg', err);
+    loaderMessage.textContent = 'Failed to load FFmpeg. Please refresh the page.';
+    progressContainer.style.display = 'none';
+    // Don't hide loader, show error message
+});
 
 videoUpload.addEventListener('change', (e) => {
     videoFile = e.target.files[0];
@@ -61,9 +80,15 @@ videoUpload.addEventListener('change', (e) => {
 cropButton.addEventListener('click', async () => {
     if (!videoFile || !originalVideoElement) return;
 
-    const ffmpeg = await loadFFmpeg();
-    
     loader.classList.remove('hidden');
+    loaderMessage.textContent = 'Waiting for FFmpeg to finish loading...';
+
+    const ffmpeg = await ffmpegLoadPromise;
+    if (!ffmpeg) {
+         loaderMessage.textContent = 'FFmpeg failed to load. Cannot process video.';
+         return; // Exit if ffmpeg isn't available
+    }
+    
     resultsContainer.innerHTML = '';
     resultsSection.classList.add('hidden');
 
@@ -113,4 +138,3 @@ cropButton.addEventListener('click', async () => {
     loader.classList.add('hidden');
     resultsSection.classList.remove('hidden');
 });
-

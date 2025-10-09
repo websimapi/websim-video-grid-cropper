@@ -136,6 +136,28 @@ video {
     z-index: 1000;
 }
 
+#loader p {
+    color: white;
+}
+
+#progress-container {
+    width: 80%;
+    max-width: 300px;
+    height: 20px;
+    background-color: #555;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1rem;
+    border: 1px solid #777;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.2s ease-out;
+}
+
 .spinner {
     border: 8px solid #f3f3f3;
     border-top: 8px solid var(--primary-color);
@@ -162,4 +184,3 @@ video {
         font-size: 1.5rem;
     }
 }
-
